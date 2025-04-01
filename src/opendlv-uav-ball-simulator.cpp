@@ -40,30 +40,92 @@ int32_t main(int32_t argc, char **argv) {
     // Interface to a running OpenDaVINCI session; here, you can send and receive messages.
     cluon::OD4Session od4{static_cast<uint16_t>(std::stoi(commandlineArguments["cid"]))};
 
-    float cur_y{0.0f};
+    struct cfPos {
+        float x;
+        float y;
+    };
+    std::mutex stateMutex;
+    cfPos cur_pos{0.0f, 0.0f};
+    int FRAME_ID = 0;
+    auto onFrame{[&FRAME_ID, &cur_pos, &stateMutex](cluon::data::Envelope &&envelope)
+    {
+        uint32_t const senderStamp = envelope.senderStamp();
+        if (FRAME_ID == senderStamp) {
+            auto frame = cluon::extractMessage<opendlv::sim::Frame>(std::move(envelope));
+            std::lock_guard<std::mutex> lck(stateMutex);
+            cur_pos.x = frame.x();
+            cur_pos.y = frame.y();
+        }
+    }};
+    od4.dataTrigger(opendlv::sim::Frame::ID(), onFrame);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    std::cout <<" Start ball simulation..." << std::endl;
+    float cur_x{0.0f};
     float dev{0.1f};
+    int nTimer = 0;
+    float targetx{1.0f};
+    float targety{-1.0f};
     while (od4.isRunning()) {
         // Sleep for 100 ms to not let the loop run to fast
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         opendlv::sim::Frame frame1;
-        frame1.x(0.0f);
-        frame1.y(0.0f);        
+        opendlv::sim::Frame frame2;
+
+        float dist = std::sqrt(std::pow(cur_pos.x - targetx,2) + std::pow(cur_pos.y - targety,2));
+        // std::cout <<" Current distance: " << dist << std::endl;
+        if ( dist <= 0.3f ){
+            if ( targetx == 1.0f ){
+                targetx = -0.7f;
+            }
+            else{
+                targetx = 1.0f;
+            }
+        }
+        frame1.x(targetx);
+        frame1.y(targety);        
         frame1.z(1.0f);
+
+        if (cur_x >= 3.0f)
+            dev = -0.1f;
+        else if (cur_x <= -3.0f)
+            dev = 0.1f;
+        if ( nTimer <= 3000 ){
+            cur_x += dev;
+            frame2.x(cur_x);
+            frame2.y(0.0f); 
+            frame2.z(1.0f);
+        }
+        else if ( nTimer <= 6000 ) {
+            frame2.x(-5.0f);
+            frame2.y(-5.0f); 
+            frame2.z(1.0f);
+        }
+        else if ( nTimer <= 9000 ) {
+            cur_x += dev;
+            frame2.x(0.0f); 
+            frame2.y(cur_x);
+            frame2.z(1.0f);
+        }
+        else{
+            nTimer = 0;
+        }
         cluon::data::TimeStamp sampleTime;
         od4.send(frame1, sampleTime, 1);
-
-        opendlv::sim::Frame frame2;
-        if (cur_y >= 3.0f)
-            dev = -0.1f;
-        else if (cur_y <= -3.0f)
-            dev = 0.1f;
-        cur_y += dev;
-
-        frame2.x(0.0f);
-        frame2.y(cur_y);        
-        frame2.z(1.0f);
         od4.send(frame2, sampleTime, 2);
+        nTimer += 1;
+
+        // opendlv::sim::Frame frame2;
+        // if (cur_x >= 3.0f)
+        //     dev = -0.1f;
+        // else if (cur_x <= -3.0f)
+        //     dev = 0.1f;
+        // cur_x += dev;
+        // frame2.x(0.2f);
+        // frame2.y(cur_x); 
+        // frame2.z(1.0f);
+        // cluon::data::TimeStamp sampleTime;
     }
 
     retCode = 0;
