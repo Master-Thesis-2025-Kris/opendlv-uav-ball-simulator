@@ -59,6 +59,22 @@ int32_t main(int32_t argc, char **argv) {
     }};
     od4.dataTrigger(opendlv::sim::Frame::ID(), onFrame);
 
+    float dist_obs_r{-1.0f};
+    std::mutex distMutex;
+    auto onDistRead = [&distMutex, &dist_obs_r](cluon::data::Envelope &&env){
+        auto senderStamp = env.senderStamp();
+        // Now, we unpack the cluon::data::Envelope to get the desired DistanceReading.
+        opendlv::logic::action::PreviewPoint pPtmessage = cluon::extractMessage<opendlv::logic::action::PreviewPoint>(std::move(env));
+        
+        // Store distance readings.
+        std::lock_guard<std::mutex> lck(distMutex);
+        if ( senderStamp == 1 ){
+            dist_obs_r = pPtmessage.distance();
+        }
+    };
+    // Finally, we register our lambda for the message identifier for opendlv::proxy::DistanceReading.
+    od4.dataTrigger(opendlv::logic::action::PreviewPoint::ID(), onDistRead);
+
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     std::cout <<" Start ball simulation..." << std::endl;
     float cur_x{0.0f};
@@ -66,8 +82,11 @@ int32_t main(int32_t argc, char **argv) {
     int nTimer = 0;
     float targetx{1.0f};
     float targety{-1.0f};
+
     std::mutex readMutex;
     cfPos cur_pos{0.0f, 0.0f};
+    float dist_obs{-1.0f};
+
     while (od4.isRunning()) {
         // Sleep for 100 ms to not let the loop run to fast
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -76,6 +95,7 @@ int32_t main(int32_t argc, char **argv) {
             std::lock_guard<std::mutex> lck(readMutex);
             cur_pos.x = cur_pos_r.x;
             cur_pos.y = cur_pos_r.y;
+            dist_obs = dist_obs_r;
         }
 
         opendlv::sim::Frame frame1;
@@ -95,12 +115,15 @@ int32_t main(int32_t argc, char **argv) {
         frame1.y(targety);        
         frame1.z(1.0f);
 
-        if (cur_x >= 3.0f)
+        if (cur_x >= 1.25f)
             dev = -0.1f;
-        else if (cur_x <= -3.0f)
+        else if (cur_x <= -0.75f)
             dev = 0.1f;
+
+        if ( dist_obs > 0.1f )
+            cur_x += dev;    
+
         if ( nTimer <= 3000 ){
-            cur_x += dev;
             frame2.x(cur_x);
             frame2.y(0.0f); 
             frame2.z(1.0f);
@@ -111,7 +134,6 @@ int32_t main(int32_t argc, char **argv) {
             frame2.z(1.0f);
         }
         else if ( nTimer <= 9000 ) {
-            cur_x += dev;
             frame2.x(0.0f); 
             frame2.y(cur_x);
             frame2.z(1.0f);
