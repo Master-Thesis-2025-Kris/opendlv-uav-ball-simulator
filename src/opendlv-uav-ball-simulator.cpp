@@ -45,16 +45,16 @@ int32_t main(int32_t argc, char **argv) {
         float y;
     };
     std::mutex stateMutex;
-    cfPos cur_pos{0.0f, 0.0f};
+    cfPos cur_pos_r{0.0f, 0.0f};
     int FRAME_ID = 0;
-    auto onFrame{[&FRAME_ID, &cur_pos, &stateMutex](cluon::data::Envelope &&envelope)
+    auto onFrame{[&FRAME_ID, &cur_pos_r, &stateMutex](cluon::data::Envelope &&envelope)
     {
         uint32_t const senderStamp = envelope.senderStamp();
         if (FRAME_ID == senderStamp) {
             auto frame = cluon::extractMessage<opendlv::sim::Frame>(std::move(envelope));
             std::lock_guard<std::mutex> lck(stateMutex);
-            cur_pos.x = frame.x();
-            cur_pos.y = frame.y();
+            cur_pos_r.x = frame.x();
+            cur_pos_r.y = frame.y();
         }
     }};
     od4.dataTrigger(opendlv::sim::Frame::ID(), onFrame);
@@ -66,9 +66,17 @@ int32_t main(int32_t argc, char **argv) {
     int nTimer = 0;
     float targetx{1.0f};
     float targety{-1.0f};
+    std::mutex readMutex;
+    cfPos cur_pos{0.0f, 0.0f};
     while (od4.isRunning()) {
         // Sleep for 100 ms to not let the loop run to fast
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        {
+            std::lock_guard<std::mutex> lck(readMutex);
+            cur_pos.x = cur_pos_r.x;
+            cur_pos.y = cur_pos_r.y;
+        }
 
         opendlv::sim::Frame frame1;
         opendlv::sim::Frame frame2;
