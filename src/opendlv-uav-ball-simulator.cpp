@@ -45,23 +45,23 @@ int32_t main(int32_t argc, char **argv) {
         float y;
     };
     std::mutex stateMutex;
-    cfPos cur_pos_r{0.0f, 0.0f};
+    cfPos cur_pos{0.0f, 0.0f};
     int FRAME_ID = 0;
-    auto onFrame{[&FRAME_ID, &cur_pos_r, &stateMutex](cluon::data::Envelope &&envelope)
+    auto onFrame{[&FRAME_ID, &cur_pos, &stateMutex](cluon::data::Envelope &&envelope)
     {
         uint32_t const senderStamp = envelope.senderStamp();
         if (FRAME_ID == senderStamp) {
             auto frame = cluon::extractMessage<opendlv::sim::Frame>(std::move(envelope));
             std::lock_guard<std::mutex> lck(stateMutex);
-            cur_pos_r.x = frame.x();
-            cur_pos_r.y = frame.y();
+            cur_pos.x = frame.x();
+            cur_pos.y = frame.y();
         }
     }};
     od4.dataTrigger(opendlv::sim::Frame::ID(), onFrame);
 
-    float dist_obs_r{-1.0f};
+    float dist_obs{-1.0f};
     std::mutex distMutex;
-    auto onDistRead = [&distMutex, &dist_obs_r](cluon::data::Envelope &&env){
+    auto onDistRead = [&distMutex, &dist_obs](cluon::data::Envelope &&env){
         auto senderStamp = env.senderStamp();
         // Now, we unpack the cluon::data::Envelope to get the desired DistanceReading.
         opendlv::logic::action::PreviewPoint pPtmessage = cluon::extractMessage<opendlv::logic::action::PreviewPoint>(std::move(env));
@@ -69,7 +69,7 @@ int32_t main(int32_t argc, char **argv) {
         // Store distance readings.
         std::lock_guard<std::mutex> lck(distMutex);
         if ( senderStamp == 1 ){
-            dist_obs_r = pPtmessage.distance();
+            dist_obs = pPtmessage.distance();
         }
     };
     // Finally, we register our lambda for the message identifier for opendlv::proxy::DistanceReading.
@@ -83,20 +83,9 @@ int32_t main(int32_t argc, char **argv) {
     float targetx{1.0f};
     float targety{-1.0f};
 
-    std::mutex readMutex;
-    cfPos cur_pos{0.0f, 0.0f};
-    float dist_obs{-1.0f};
-
     while (od4.isRunning()) {
         // Sleep for 100 ms to not let the loop run to fast
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        {
-            std::lock_guard<std::mutex> lck(readMutex);
-            cur_pos.x = cur_pos_r.x;
-            cur_pos.y = cur_pos_r.y;
-            dist_obs = dist_obs_r;
-        }
 
         opendlv::sim::Frame frame1;
         opendlv::sim::Frame frame2;
@@ -104,11 +93,16 @@ int32_t main(int32_t argc, char **argv) {
         float dist = std::sqrt(std::pow(cur_pos.x - targetx,2) + std::pow(cur_pos.y - targety,2));
         // std::cout <<" Current distance: " << dist << std::endl;
         if ( dist <= 0.3f ){
-            if ( targetx == 1.0f ){
+            if ( targetx == 1.0f && targety == -1.0f ){
                 targetx = -0.7f;
+            }
+            else if ( targetx == -0.7f && targety == -1.0f ){
+                targetx = 1.0f;
+                targety = 0.0f;
             }
             else{
                 targetx = 1.0f;
+                targety = -1.0f;
             }
         }
         frame1.x(targetx);
