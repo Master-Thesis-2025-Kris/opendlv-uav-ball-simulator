@@ -108,6 +108,10 @@ int32_t main(int32_t argc, char **argv) {
             }
             nTargetFoundTimer += 1;
         }
+        if ( nTargetFoundTimer >= 3 ){            
+            targetx = -5.0f;
+            targety = -5.0f;
+        }
         frame1.x(targetx);
         frame1.y(targety);        
         frame1.z(1.0f);
