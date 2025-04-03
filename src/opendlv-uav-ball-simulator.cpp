@@ -82,6 +82,7 @@ int32_t main(int32_t argc, char **argv) {
     int nTimer = 0;
     float targetx{1.0f};
     float targety{-1.0f};
+    int16_t nTargetFoundTimer{0};
 
     while (od4.isRunning()) {
         // Sleep for 100 ms to not let the loop run to fast
@@ -89,6 +90,7 @@ int32_t main(int32_t argc, char **argv) {
 
         opendlv::sim::Frame frame1;
         opendlv::sim::Frame frame2;
+        opendlv::logic::sensation::TargetFoundState targetFoundState;
 
         float dist = std::sqrt(std::pow(cur_pos.x - targetx,2) + std::pow(cur_pos.y - targety,2));
         // std::cout <<" Current distance: " << dist << std::endl;
@@ -104,6 +106,7 @@ int32_t main(int32_t argc, char **argv) {
                 targetx = 1.0f;
                 targety = -1.0f;
             }
+            nTargetFoundTimer += 1;
         }
         frame1.x(targetx);
         frame1.y(targety);        
@@ -135,9 +138,12 @@ int32_t main(int32_t argc, char **argv) {
         else{
             nTimer = 0;
         }
+
+        targetFoundState.target_found_count(nTargetFoundTimer);
         cluon::data::TimeStamp sampleTime;
         od4.send(frame1, sampleTime, 1);
         od4.send(frame2, sampleTime, 2);
+        od4.send(targetFoundState, sampleTime, 0);
         nTimer += 1;
 
         // opendlv::sim::Frame frame2;
