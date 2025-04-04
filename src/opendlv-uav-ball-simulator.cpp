@@ -36,6 +36,22 @@ int32_t main(int32_t argc, char **argv) {
         std::cerr << "You should include the cid to start communicate in OD4Session" << std::endl;
         return retCode;
     }
+    float chpadx{0.0f};
+    if ( (0 == commandlineArguments.count("chpadx")) ) {
+        std::cerr << "You should include the chpadx to start..." << std::endl;
+        return retCode;
+    }
+    else{
+        chpadx = static_cast<float>(std::stof(commandlineArguments["chpadx"]));
+    }
+    float chpady{0.0f};
+    if ( (0 == commandlineArguments.count("chpady")) ) {
+        std::cerr << "You should include the chpady to start..." << std::endl;
+        return retCode;
+    }
+    else{
+        chpady = static_cast<float>(std::stof(commandlineArguments["chpady"]));
+    }
 
     // Interface to a running OpenDaVINCI session; here, you can send and receive messages.
     cluon::OD4Session od4{static_cast<uint16_t>(std::stoi(commandlineArguments["cid"]))};
@@ -80,9 +96,21 @@ int32_t main(int32_t argc, char **argv) {
     float cur_x{0.0f};
     float dev{0.1f};
     int nTimer = 0;
-    float targetx{1.0f};
-    float targety{-1.0f};
+    // // For rooms
+    // float targetx{1.0f};
+    // float targety{-1.0f};
+    // For maze
+    float targetx{-0.65f};
+    float targety{0.0f};
     int16_t nTargetFoundTimer{0};
+    int16_t isChpadFound{0};
+
+    bool isCloseToWall = false;
+    bool isCloseToBall = false;
+    auto closeWallStartTime = std::chrono::high_resolution_clock::now();
+    auto closeWallEndTime = std::chrono::high_resolution_clock::now();
+    auto closeBallStartTime = std::chrono::high_resolution_clock::now();
+    auto closeBallEndTime = std::chrono::high_resolution_clock::now();
 
     while (od4.isRunning()) {
         // Sleep for 100 ms to not let the loop run to fast
@@ -92,23 +120,113 @@ int32_t main(int32_t argc, char **argv) {
         opendlv::sim::Frame frame2;
         opendlv::logic::sensation::TargetFoundState targetFoundState;
 
+        // Check current states
+        // if ( (cur_pos.x >= 1.45 || cur_pos.x <= -0.95 || cur_pos.y >= 0.45 || cur_pos.y <= -1.45) ){
+        //     if ( isCloseToWall == false ){
+        //         std::cout << "Too close to the wall!!" << std::endl;
+        //         auto closeWallStartTime = std::chrono::high_resolution_clock::now();
+        //         isCloseToWall = true;
+        //     }
+        // }
+        // else if ( isCloseToWall ){
+        //     closeWallEndTime = std::chrono::high_resolution_clock::now();
+        //     const std::chrono::duration<double> elapsed = closeWallEndTime - closeWallStartTime;
+        //     auto start_time_t = std::chrono::system_clock::to_time_t(
+        //         std::chrono::time_point_cast<std::chrono::system_clock::duration>(closeWallStartTime)
+        //     );
+        //     auto end_time_t = std::chrono::system_clock::to_time_t(
+        //         std::chrono::time_point_cast<std::chrono::system_clock::duration>(closeWallEndTime)
+        //     );
+
+        //     std::cout <<" Close wall with start time: " << std::ctime(&start_time_t) << std::endl;
+        //     std::cout <<" , end time: " << std::ctime(&end_time_t) << std::endl;
+        //     std::cout <<" , elapsed: " << elapsed.count() << " seconds(s)" << std::endl;
+        //     isCloseToWall = false;
+        // }
+
+        if ( dist_obs > -1.0f ){      
+            if ( nTimer <= 3000 ){
+                float dist = std::sqrt(std::pow(cur_pos.x - cur_x,2) + std::pow(cur_pos.y,2));
+                if ( dist <= 0.05f ){
+                    if ( isCloseToBall == false ){
+                        std::cout << "Too close to the ball!!" << std::endl;
+                        auto closeBallStartTime = std::chrono::high_resolution_clock::now();
+                        isCloseToBall = true;
+                    }
+                }            
+                else if ( isCloseToBall ){
+                    closeBallEndTime = std::chrono::high_resolution_clock::now();
+                    const std::chrono::duration<double> elapsed = closeBallEndTime - closeBallStartTime;
+                    auto start_time_t = std::chrono::system_clock::to_time_t(
+                        std::chrono::time_point_cast<std::chrono::system_clock::duration>(closeBallStartTime)
+                    );
+                    auto end_time_t = std::chrono::system_clock::to_time_t(
+                        std::chrono::time_point_cast<std::chrono::system_clock::duration>(closeBallEndTime)
+                    );
+        
+                    std::cout <<" Close ball with start time: " << std::ctime(&start_time_t) << std::endl;
+                    std::cout <<" , end time: " << std::ctime(&end_time_t) << std::endl;
+                    std::cout <<" , elapsed: " << elapsed.count() << " seconds(s)" << std::endl;
+                    isCloseToBall = false;
+                }    
+            }
+            else if ( nTimer > 6000 && nTimer <= 9000 ){
+                float dist = std::sqrt(std::pow(cur_pos.x,2) + std::pow(cur_pos.y - cur_x,2));
+                if ( dist <= 0.05f ){
+                    if ( isCloseToBall == false ){
+                        std::cout << "Too close to the ball!!" << std::endl;
+                        auto closeWallStartTime = std::chrono::high_resolution_clock::now();
+                        isCloseToBall = true;
+                    }
+                }           
+                else if ( isCloseToBall ){
+                    closeBallEndTime = std::chrono::high_resolution_clock::now();
+                    const std::chrono::duration<double> elapsed = closeBallEndTime - closeBallStartTime;
+                    auto start_time_t = std::chrono::system_clock::to_time_t(
+                        std::chrono::time_point_cast<std::chrono::system_clock::duration>(closeBallStartTime)
+                    );
+                    auto end_time_t = std::chrono::system_clock::to_time_t(
+                        std::chrono::time_point_cast<std::chrono::system_clock::duration>(closeBallEndTime)
+                    );
+        
+                    std::cout <<" Close ball with start time: " << std::ctime(&start_time_t) << std::endl;
+                    std::cout <<" , end time: " << std::ctime(&end_time_t) << std::endl;
+                    std::cout <<" , elapsed: " << elapsed.count() << " seconds(s)" << std::endl;
+                    isCloseToBall = false;
+                }      
+            }
+        }
+
         float dist = std::sqrt(std::pow(cur_pos.x - targetx,2) + std::pow(cur_pos.y - targety,2));
-        // std::cout <<" Current distance: " << dist << std::endl;
+        float dist_chpad = std::sqrt(std::pow(cur_pos.x - chpadx,2) + std::pow(cur_pos.y - chpady,2));
+        // std::cout <<" Current distance: " << dist_chpad << std::endl;
+        // // For rooms
+        // if ( dist <= 0.3f ){
+        //     if ( targetx == 1.0f && targety == -1.0f ){
+        //         targetx = -0.7f;
+        //     }
+        //     else if ( targetx == -0.7f && targety == -1.0f ){
+        //         targetx = 1.0f;
+        //         targety = 0.0f;
+        //     }
+        //     else{
+        //         targetx = 1.0f;
+        //         targety = -1.0f;
+        //     }
+        //     nTargetFoundTimer += 1;
+        // }
+
+        // For maze
         if ( dist <= 0.3f ){
-            if ( targetx == 1.0f && targety == -1.0f ){
-                targetx = -0.7f;
-            }
-            else if ( targetx == -0.7f && targety == -1.0f ){
-                targetx = 1.0f;
-                targety = 0.0f;
-            }
-            else{
-                targetx = 1.0f;
+            if ( targetx == -0.65f && targety == 0.0f ){
+                targetx = 1.25f;
                 targety = -1.0f;
             }
             nTargetFoundTimer += 1;
         }
-        if ( nTargetFoundTimer >= 3 ){            
+
+        int nCount = 2; // 2 for maze 3 for rooms
+        if ( nTargetFoundTimer >= nCount ){            
             targetx = -5.0f;
             targety = -5.0f;
         }
@@ -143,7 +261,14 @@ int32_t main(int32_t argc, char **argv) {
             nTimer = 0;
         }
 
+        if ( dist_chpad <= 0.10f ){
+            isChpadFound = 1;
+        }
+        else{
+            isChpadFound = 0;
+        }
         targetFoundState.target_found_count(nTargetFoundTimer);
+        targetFoundState.is_chpad_found(isChpadFound);
         cluon::data::TimeStamp sampleTime;
         od4.send(frame1, sampleTime, 1);
         od4.send(frame2, sampleTime, 2);
