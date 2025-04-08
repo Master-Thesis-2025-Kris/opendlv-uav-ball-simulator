@@ -96,9 +96,11 @@ int32_t main(int32_t argc, char **argv) {
     float cur_x{0.0f};
     float dev{0.1f};
     int nTimer = 0;
-    // For rooms
-    float targetx{1.0f};
-    float targety{-1.0f};
+    // For maze
+    float targetx{-0.65f};
+    float targety{-0.0f};
+    float targetx_1{1.25f};
+    float targety_1{-1.0f};
     int16_t nTargetFoundTimer{0};
     int16_t isChpadFound{0};
 
@@ -115,6 +117,7 @@ int32_t main(int32_t argc, char **argv) {
 
         opendlv::sim::Frame frame1;
         opendlv::sim::Frame frame2;
+        opendlv::sim::Frame frame3;
         opendlv::logic::sensation::TargetFoundState targetFoundState;
 
         // Check current states
@@ -195,32 +198,34 @@ int32_t main(int32_t argc, char **argv) {
         }
 
         float dist = std::sqrt(std::pow(cur_pos.x - targetx,2) + std::pow(cur_pos.y - targety,2));
+        float dist_1 = std::sqrt(std::pow(cur_pos.x - targetx_1,2) + std::pow(cur_pos.y - targety_1,2));
         float dist_chpad = std::sqrt(std::pow(cur_pos.x - chpadx,2) + std::pow(cur_pos.y - chpady,2));
-        // std::cout <<" Current distance: " << dist_chpad << std::endl;
-        // For rooms
-        if ( dist <= 0.3f ){
-            if ( targetx == 1.0f && targety == -1.0f ){
-                targetx = -0.7f;
-            }
-            else if ( targetx == -0.7f && targety == -1.0f ){
-                targetx = 1.0f;
-                targety = 0.0f;
-            }
-            else{
-                targetx = 1.0f;
-                targety = -1.0f;
-            }
-            nTargetFoundTimer += 1;
-        }
+        // std::cout <<" Current dist: " << dist << ", dist1: " << dist_1 << std::endl;
 
-        int nCount = 3; // 2 for maze 3 for rooms
-        if ( nTargetFoundTimer >= nCount ){            
+        // For maze
+        if ( dist <= 0.3f ){
+            nTargetFoundTimer += 1;         
             targetx = -5.0f;
             targety = -5.0f;
+        
         }
+        else if ( dist_1 <= 0.3f ){
+            nTargetFoundTimer += 1;         
+            targetx_1 = -5.0f;
+            targety_1 = -5.0f;        
+        }
+
+        // int nCount = 2; // 2 for maze 3 for rooms
+        // if ( nTargetFoundTimer >= nCount ){            
+        //     targetx = -5.0f;
+        //     targety = -5.0f;
+        // }
         frame1.x(targetx);
         frame1.y(targety);        
         frame1.z(1.0f);
+        frame3.x(targetx_1);
+        frame3.y(targety_1);        
+        frame3.z(1.0f);
 
         if (cur_x >= 1.25f)
             dev = -0.1f;
@@ -260,6 +265,7 @@ int32_t main(int32_t argc, char **argv) {
         cluon::data::TimeStamp sampleTime;
         od4.send(frame1, sampleTime, 1);
         od4.send(frame2, sampleTime, 2);
+        od4.send(frame3, sampleTime, 3);
         od4.send(targetFoundState, sampleTime, 0);
         nTimer += 1;
 
