@@ -108,6 +108,7 @@ int32_t main(int32_t argc, char **argv) {
         opendlv::sim::Frame frame1;
         opendlv::sim::Frame frame2;   
         opendlv::sim::Frame frame3;   
+        opendlv::logic::sensation::TargetFoundState tState;
 
         float dist = std::sqrt(std::pow(cur_pos.x - targetx,2) + std::pow(cur_pos.y - targety,2));
         // For rooms
@@ -126,6 +127,12 @@ int32_t main(int32_t argc, char **argv) {
                 }
                 nTargetFoundTimer += 1;
             }
+
+            int nCount = 3; // 2 for maze 3 for rooms
+            if ( nTargetFoundTimer >= nCount ){            
+                targetx = -5.0f;
+                targety = -5.0f;
+            }
         }
         else if ( maptype == 1 ){   // For maze
             float dist_1 = std::sqrt(std::pow(cur_pos.x - targetx_1,2) + std::pow(cur_pos.y - targety_1,2));
@@ -141,14 +148,7 @@ int32_t main(int32_t argc, char **argv) {
                 targety_1 = -5.0f;        
             }
         }
-
-        if ( maptype == 0 ){ // map type 1 equals maze
-            int nCount = 3; // 2 for maze 3 for rooms
-            if ( nTargetFoundTimer >= nCount ){            
-                targetx = -5.0f;
-                targety = -5.0f;
-            }
-        }
+        
         frame1.x(targetx);
         frame1.y(targety);        
         frame1.z(1.0f);
@@ -174,6 +174,8 @@ int32_t main(int32_t argc, char **argv) {
             frame3.z(1.0f);            
             od4.send(frame3, sampleTime, 3);
         } 
+        tState.target_found_count(nTargetFoundTimer);
+        od4.send(tState, sampleTime, 0);
         nTimer += 1;
     }
 

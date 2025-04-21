@@ -377,7 +377,6 @@ message opendlv.logic.sensation.CrazyFlieState [id = 1193] {
   float battery_state [id = 2];
 }
 
-message opendlv.logic.sensation.TargetFoundState [id = 1194] {
+message opendlv.logic.sensation.TargetFoundState [id = 1195] {
   uint16 target_found_count [id = 1];
-  uint16 is_chpad_found [id = 2];
 }
