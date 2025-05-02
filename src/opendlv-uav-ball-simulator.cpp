@@ -84,17 +84,23 @@ int32_t main(int32_t argc, char **argv) {
     // Finally, we register our lambda for the message identifier for opendlv::proxy::DistanceReading.
     od4.dataTrigger(opendlv::logic::action::PreviewPoint::ID(), onDistRead);
 
-    bool task_completed = false;
-    auto onFlagRead{[&od4, &task_completed](
-        cluon::data::Envelope &&envelope)
-      {
-        auto msg = cluon::extractMessage<opendlv::logic::sensation::CompleteFlag>(
-            std::move(envelope));
-
-        task_completed = msg.task_completed();
-      }};
-
-    od4.dataTrigger(opendlv::logic::sensation::CompleteFlag::ID(), onFlagRead);
+    bool ReadyToStart = false;
+     auto onGAParamRead = [&ReadyToStart](cluon::data::Envelope &&env){
+         auto senderStamp = env.senderStamp();
+         // Now, we unpack the cluon::data::Envelope to get the desired DistanceReading.
+         opendlv::logic::sensation::GAParam gaParammessage = cluon::extractMessage<opendlv::logic::sensation::GAParam>(std::move(env));
+         
+         // Store aim direction readings.
+        //  std::lock_guard<std::mutex> lck(aimDirectionMutex);
+         if ( senderStamp == 0 ){
+            if ( gaParammessage.ReadyToStart() == 1 )
+                ReadyToStart = true;
+            else
+                ReadyToStart = false;
+         }
+     };
+     // Finally, we register our lambda for the message identifier for opendlv::proxy::DistanceReading.
+     od4.dataTrigger(opendlv::logic::sensation::GAParam::ID(), onGAParamRead);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     std::cout <<" Start ball simulation..." << std::endl;
@@ -117,7 +123,7 @@ int32_t main(int32_t argc, char **argv) {
         // Sleep for 100 ms to not let the loop run to fast
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        if ( task_completed ){
+        if ( ReadyToStart == false ){
             if ( maptype == 0 && targetx == -5.0f && targety == -5.0f ){
                 targetx = 1.0f;
                 targety = -1.0f;
@@ -132,6 +138,10 @@ int32_t main(int32_t argc, char **argv) {
                     targety = -1.0f;
                 }
             }
+            cur_x = 0.0f;
+            dev = 0.1f;
+            nTimer = 0;
+            nTargetFoundTimer = 0;
         }
 
         opendlv::sim::Frame frame1;
