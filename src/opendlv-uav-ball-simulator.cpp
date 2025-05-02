@@ -84,6 +84,18 @@ int32_t main(int32_t argc, char **argv) {
     // Finally, we register our lambda for the message identifier for opendlv::proxy::DistanceReading.
     od4.dataTrigger(opendlv::logic::action::PreviewPoint::ID(), onDistRead);
 
+    bool task_completed = false;
+    auto onFlagRead{[&od4, &task_completed](
+        cluon::data::Envelope &&envelope)
+      {
+        auto msg = cluon::extractMessage<opendlv::logic::sensation::CompleteFlag>(
+            std::move(envelope));
+
+        task_completed = msg.task_completed();
+      }};
+
+    od4.dataTrigger(opendlv::logic::sensation::CompleteFlag::ID(), onFlagRead);
+
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     std::cout <<" Start ball simulation..." << std::endl;
     float cur_x{0.0f};
@@ -104,6 +116,23 @@ int32_t main(int32_t argc, char **argv) {
     while (od4.isRunning()) {
         // Sleep for 100 ms to not let the loop run to fast
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        if ( task_completed ){
+            if ( maptype == 0 && targetx == -5.0f && targety == -5.0f ){
+                targetx = 1.0f;
+                targety = -1.0f;
+            }
+            else if ( maptype == 1 ){
+                if ( targetx == -5.0f && targety == -5.0f ){
+                    targetx = -0.65f;
+                    targety = -0.0f;
+                }
+                if ( targetx_1 == -5.0f && targety_1 == -5.0f ){
+                    targetx = 1.25f;
+                    targety = -1.0f;
+                }
+            }
+        }
 
         opendlv::sim::Frame frame1;
         opendlv::sim::Frame frame2;   
@@ -151,7 +180,7 @@ int32_t main(int32_t argc, char **argv) {
         
         frame1.x(targetx);
         frame1.y(targety);        
-        frame1.z(1.0f);
+        frame1.z(1.5f);
 
         if (cur_x >= 1.25f)
             dev = -0.1f;
@@ -163,7 +192,7 @@ int32_t main(int32_t argc, char **argv) {
 
         frame2.x(cur_x);
         frame2.y(0.0f); 
-        frame2.z(1.0f);
+        frame2.z(1.5f);
 
         cluon::data::TimeStamp sampleTime;
         od4.send(frame1, sampleTime, 1);
@@ -171,7 +200,7 @@ int32_t main(int32_t argc, char **argv) {
         if ( maptype == 1 ){ 
             frame3.x(targetx_1);
             frame3.y(targety_1);        
-            frame3.z(1.0f);            
+            frame3.z(1.5f);            
             od4.send(frame3, sampleTime, 3);
         } 
         tState.target_found_count(nTargetFoundTimer);
