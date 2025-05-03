@@ -381,17 +381,7 @@ message opendlv.logic.sensation.TargetFoundState [id = 1195] {
   uint16 target_found_count [id = 1];
 }
 
-message opendlv.logic.sensation.GAParam [id = 1196] {
-  float safeDist_ratio [id = 1];
-  float dodge_dist_totune [id = 2];  
-  float cur_distToMove_ratio [id = 3];
-  float time_ToMove_ratio [id = 4];
-  float cur_distToMove_goto_ratio [id = 5];
-  float time_ToMove_goto_ratio [id = 6];
-  float cur_distToMove_target_ratio [id = 7];
-  float time_ToMove_target_ratio [id = 8];
-  float angTurn_targetFinding [id = 9];
-  float time_ToTurn_ratio [id = 10];
-  float angTurn_lookAround [id = 11];
-  uint16 ReadyToStart [id = 12];
+message opendlv.logic.sensation.CompleteFlag [id = 1197] {
+  uint16 task_completed [id = 1];
+  double fitness [id = 2];
 }

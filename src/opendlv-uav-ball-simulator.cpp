@@ -84,23 +84,23 @@ int32_t main(int32_t argc, char **argv) {
     // Finally, we register our lambda for the message identifier for opendlv::proxy::DistanceReading.
     od4.dataTrigger(opendlv::logic::action::PreviewPoint::ID(), onDistRead);
 
-    bool ReadyToStart = false;
-     auto onGAParamRead = [&ReadyToStart](cluon::data::Envelope &&env){
+     bool taskCompleted = false;
+     auto onCFlagRead = [&taskCompleted](cluon::data::Envelope &&env){
          auto senderStamp = env.senderStamp();
          // Now, we unpack the cluon::data::Envelope to get the desired DistanceReading.
-         opendlv::logic::sensation::GAParam gaParammessage = cluon::extractMessage<opendlv::logic::sensation::GAParam>(std::move(env));
+         opendlv::logic::sensation::CompleteFlag cFlagessage = cluon::extractMessage<opendlv::logic::sensation::CompleteFlag>(std::move(env));
          
          // Store aim direction readings.
         //  std::lock_guard<std::mutex> lck(aimDirectionMutex);
          if ( senderStamp == 0 ){
-            if ( gaParammessage.ReadyToStart() == 1 )
-                ReadyToStart = true;
+            if ( cFlagessage.task_completed() == 1 )
+                taskCompleted = true;
             else
-                ReadyToStart = false;
+                taskCompleted = false;
          }
      };
      // Finally, we register our lambda for the message identifier for opendlv::proxy::DistanceReading.
-     od4.dataTrigger(opendlv::logic::sensation::GAParam::ID(), onGAParamRead);
+     od4.dataTrigger(opendlv::logic::sensation::CompleteFlag::ID(), onCFlagRead);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(5000));
     std::cout <<" Start ball simulation..." << std::endl;
@@ -123,7 +123,7 @@ int32_t main(int32_t argc, char **argv) {
         // Sleep for 100 ms to not let the loop run to fast
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        if ( ReadyToStart == false ){
+        if ( taskCompleted ){
             if ( maptype == 0 && targetx == -5.0f && targety == -5.0f ){
                 targetx = 1.0f;
                 targety = -1.0f;
