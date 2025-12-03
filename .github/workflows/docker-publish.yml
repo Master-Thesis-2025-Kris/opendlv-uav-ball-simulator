@@ -1,0 +1,69 @@
+name: Docker Build & Publish
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "*.*.*" ]
+
+env:
+  # 1. 設定 Registry 為 GitHub Container Registry
+  REGISTRY: ghcr.io
+  # 2. 設定 Image Name (已轉為全小寫，Docker 嚴格要求)
+  # 對應您的 Repo: https://github.com/Master-Thesis-2025-Kris/opendlv-uav-ball-simulator
+  IMAGE_NAME: master-thesis-2025-kris/opendlv-uav-ball-simulator
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    # 必要的權限設定：允許 Action 寫入 Container Registry
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive # 保險起見，如果有 submodule 就抓下來
+
+      # 設定 QEMU (讓 GitHub 可以編譯 ARM 架構)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 設定 Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 登入 GHCR (GitHub Container Registry)
+      - name: Log in to the Container registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 自動產生 Tag (例如 1.0.0, latest)
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=ref,event=branch
+
+      # 建置並推送
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          # 只有在 Push Tag 時才真正 Push 到 Registry，普通 Branch 只做 Build 測試
+          # (如果您希望每次 Main branch 更新都 Push，請把下面這行改成: push: true)
+          push: ${{ startsWith(github.ref, 'refs/tags/') }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # 多平台支援 (如果您的模擬器只需要 x86，可以拿掉 linux/arm...)
+          platforms: ${{ startsWith(github.ref, 'refs/tags/') && 'linux/amd64,linux/arm64,linux/arm/v7' || 'linux/amd64' }}
