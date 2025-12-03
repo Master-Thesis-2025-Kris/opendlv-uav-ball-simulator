@@ -9,8 +9,7 @@ env:
   # 1. 設定 Registry 為 GitHub Container Registry
   REGISTRY: ghcr.io
   # 2. 設定 Image Name (已轉為全小寫，Docker 嚴格要求)
-  # 對應您的 Repo: https://github.com/Master-Thesis-2025-Kris/opendlv-uav-ball-simulator
-  IMAGE_NAME: master-thesis-2025-kris/opendlv-uav-ball-simulator
+  IMAGE_NAME: krishuang0323/opendlv-uav-ball-simulator
 
 jobs:
   build-and-push:
